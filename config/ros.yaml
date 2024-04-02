@@ -1,0 +1,17 @@
+program: ros.py
+name: ros_eval
+project: ros_eval
+description: ros_eval
+method: grid
+parameters:
+  env_id:
+    values: ["CartPole-v1"]
+  policy_id:
+    values: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]
+  alpha:
+    # values: [2.e-13,2.e-12,2.e-11,2.e-10,2.e-9,2.e-8,2.e-7,2.e-6,2.e-5,2.e-4,2.e-3,2.e-2,2.e-1,2,4,8,16,32,64,128,256,512,1024,2048,4096,8192]
+    values: [2.e-13,2.e-11,2.e-9,2.e-7,2.e-5,2.e-3,2.e-1]
+  repeats:
+    values: [1,2,3,4,5,6,7,8,9,10]
+  num_iterations:
+    values: [10000]

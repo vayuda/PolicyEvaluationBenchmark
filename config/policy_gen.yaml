@@ -1,0 +1,11 @@
+program: ppo.py
+name: policy_gen
+project: policy_gen
+description: policy_gen
+method: grid
+metric:
+  goal: maximize
+  name: normalized_error_diff
+parameters:
+  env_id:
+    values: ["CartPole-v1", "MountainCar-v0", "Acrobot-v1"]
