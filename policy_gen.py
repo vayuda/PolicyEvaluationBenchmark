@@ -16,7 +16,7 @@ import yaml
 
 @dataclass
 class Args:
-    exp_name: str = os.path.basename(__file__)[: -len(".py")]
+    exp_name: str = os.pythpath.basename(__file__)[: -len(".py")]
     """the name of this experiment"""
     seed: int = 1
     """seed of the experiment"""

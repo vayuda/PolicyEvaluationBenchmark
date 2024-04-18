@@ -1,6 +1,6 @@
 #!/bin/bash
 rm slurm/*.txt
-algorithm="mc"
+algorithm="ros"
 # Run wandb sweep command and capture output
 echo "Running wandb sweep..."
 sweep_output=$(wandb sweep --project "${algorithm}_eval" config/$algorithm.yaml 2>&1)

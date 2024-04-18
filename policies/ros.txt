@@ -1,0 +1,11 @@
+tr 100, time: 166s, avg_step: 494.32, step 164, returns: 80.95385402349714, estimation and variance: 99.09730347761356, 
+tr 200, time: 331s, avg_step: 493.135, step 499, returns: 99.3429516957585, estimation and variance: 98.84617954700582,
+tr 300, time: 496s, avg_step: 492.7733333333333, step 499, returns: 99.3429516957585, estimation and variance: 98.777820
+tr 400, time: 662s, avg_step: 493.74, step 499, returns: 99.3429516957585, estimation and variance: 98.87264939348488, 1
+tr 500, time: 825s, avg_step: 492.99, step 499, returns: 99.3429516957585, estimation and variance: 98.86560441269734, 1
+tr 600, time: 994s, avg_step: 493.3616666666667, step 499, returns: 99.3429516957585, estimation and variance: 98.826507
+tr 700, time: 1165s, avg_step: 493.5414285714286, step 499, returns: 99.3429516957585, estimation and variance: 98.87159
+tr 800, time: 1334s, avg_step: 493.035, step 499, returns: 99.3429516957585, estimation and variance: 98.87667663052669,
+tr 900, time: 1495s, avg_step: 493.0733333333333, step 499, returns: 99.3429516957585, estimation and variance: 98.90135
+tr 1000, time: 1656s, avg_step: 493.478, step 499, returns: 99.3429516957585, estimation and variance: 98.93429313721926, 13.215368066217884
+CartPole: avg_step: 493.478, true policy value and variance: 98.93429313721926, 13.215368066217884

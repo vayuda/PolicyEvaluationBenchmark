@@ -4,3 +4,4 @@ policies/MountainCar-v0
 policies/Pendulum-v1
 slurm/*.txt
 grep
+results/
