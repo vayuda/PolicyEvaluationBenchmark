@@ -1,0 +1,20 @@
+program: src/policy_eval.py
+name: MultiBandit
+project: policy_eval
+description: calculate policy value using various methods
+method: grid
+parameters:
+  env_id:
+    values: ["MultiBandit"]
+  seed:
+    values: [0,1,2,3,4,5,6,7,8,9,10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]
+  policy:
+    values: [500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000]
+  num_episodes:
+    values: [4000]
+  repeats:
+    values: [1,2,3,4,5,6,7,8,9,10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]
+  sampler: 
+    values: ["MonteCarlo", "ROS_1e4"]
+
+

@@ -1,7 +1,4 @@
 wandb/*
-policies/Acrobot-v1
-policies/MountainCar-v0
-policies/Pendulum-v1
 slurm/*.txt
-grep
-results/
+results/*
+policies/*
