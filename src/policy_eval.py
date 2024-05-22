@@ -11,7 +11,7 @@ from models import Policy, REINFORCE
 from environments import get_exp_config
 from sampling import MonteCarlo, ROS, DataCollector
 
-
+N_ITER = 30
 
 def pickle_loadall(filename):
     with open(filename, "rb") as f:
@@ -108,40 +108,40 @@ elif wandb.config.sampler == 'GroundTruth':
     
 else:
     raise ValueError(f'Unknown collector: {wandb.config.collector}')
+err_data = []
+for i in range(N_ITER):
+    policy_value, policy_variance, avg_steps, returns, estimations = policy_evaluation(
+        env_config['env'], 
+        env_config['max_time_step'],
+        collector, env_config['gamma'], 
+        n_trajectory=wandb.config.num_episodes,
+        show=True)
 
-policy_value, policy_variance, avg_steps, returns, estimations = policy_evaluation(
-    env_config['env'], 
-    env_config['max_time_step'],
-    collector, env_config['gamma'], 
-    n_trajectory=wandb.config.num_episodes,
-    show=True)
-
-print(f'\n{wandb.config.env_id}: avg_step: {avg_steps}, policy value and variance: {policy_value}, {policy_variance}')
-ground_truth_file = f"results/{wandb.config.env_id}/GroundTruth/{wandb.config.policy}_{wandb.config.seed}.pkl"
-if ground_truth:  
-    with open(ground_truth_file,'wb') as f:
-        pickle.dump({'truth_steps': avg_steps,
-                 'truth_value': policy_value,
-                 }, f)
+    print(f'\n{wandb.config.env_id} {i}: avg_step: {avg_steps}, policy value and variance: {policy_value}, {policy_variance}')
+    ground_truth_file = f"results/{wandb.config.env_id}/GroundTruth/{wandb.config.policy}_{wandb.config.seed}.pkl"
+    if ground_truth:  
+        with open(ground_truth_file,'wb') as f:
+            pickle.dump({'truth_steps': avg_steps,
+                    'truth_value': policy_value,
+                    }, f)
+        break # ground truth doesn't need repeats
         
-else:
-    #calculate errors
-    with open(ground_truth_file,'rb') as f:
-        info = pickle.load(f)
-        truth_value = info["truth_value"]
-        
-    estimations = np.array(estimations)
-    error =  np.power(estimations - truth_value,2)
-
-    #create folders if they dont exist and then save run data, appending if it already exists
-    save_dir = f"results/{wandb.config.env_id}/{wandb.config.sampler}"
-    save_file = f"{save_dir}/{wandb.config.policy}_{wandb.config.seed}.pkl"
-    os.makedirs(save_dir, exist_ok=True)
-    
-    runs = pickle_loadall(save_file)
-    save_data = error
-    for data in runs:
-        save_data = np.stack((data, save_data))
+    else:
+        #calculate errors
+        ground_truth_file = f"results/{wandb.config.env_id}/GroundTruth/truth_map.pkl"
+        with open(ground_truth_file,'rb') as f:
+            info = pickle.load(f)
+            truth_steps, truth_value = info[f"{wandb.config.policy}_{wandb.config.seed}"]
             
-    with open(save_file,'wb') as f:    
-        pickle.dump(save_data, f)
+        estimations = np.array(estimations)
+        error =  np.power(estimations - truth_value,2)
+        err_data.append(error)
+
+err_data = np.array(err_data)
+#create folders if they dont exist and then save run data, appending if it already exists
+save_dir = f"results/{wandb.config.env_id}/{wandb.config.sampler}"
+save_file = f"{save_dir}/{wandb.config.policy}_{wandb.config.seed}.pkl"
+os.makedirs(save_dir, exist_ok=True)
+        
+with open(save_file,'wb') as f:    
+    pickle.dump(err_data, f)

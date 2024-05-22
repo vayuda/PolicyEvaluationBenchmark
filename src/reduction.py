@@ -21,6 +21,6 @@ def compress_ground_truth():
             
 
 # compress_ground_truth()
-with open("results/MultiBandit/GroundTruth/truth_map.pkl", "rb") as pickle_file:
-    truth_map =pickle.load(pickle_file)
-    print(truth_map["3500_0"])
+# with open("results/MultiBandit/GroundTruth/truth_map.pkl", "rb") as pickle_file:
+#     truth_map =pickle.load(pickle_file)
+#     print(truth_map["3500_0"])
