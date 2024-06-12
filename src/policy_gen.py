@@ -60,7 +60,7 @@ def train():
     batch = []
     batch_size = 17
     for episode in range(training_episodes):
-        if episode in save_episodes:
+        if not episode % 25:
             actor.save(f'policies/{wandb.config.env_id}/{wandb.config.policy}/model_{episode}_{wandb.config.seed}.pt')
 
         tr, returns = play_episode(env, max_time_step, actor)

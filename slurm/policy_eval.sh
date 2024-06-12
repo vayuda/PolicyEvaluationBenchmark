@@ -1,18 +1,20 @@
 #!/bin/bash
 rm slurm/*.txt
 
-# Run wandb sweep command and capture output
-echo "Running wandb sweep..."
-sweep_output=$(wandb sweep --project policy_eval config/policy_eval.yaml 2>&1)
 
+sweep_id="2jucpq01"
 
-# Extract sweep ID from output using grep
+if [[ -z "$sweep_id" ]]; then
+    # Run wandb sweep command and capture output
+    echo "Creating a new sweep as one was not provided..."
+    sweep_output=$(wandb sweep --project policy_eval config/policy_eval.yaml 2>&1)
 
-sweep_id=$(echo "$sweep_output" | grep -oP '(?<=ID: )\w+')
-echo "Extracted sweep ID: $sweep_id"
+    # Extract sweep ID from output using grep
+    sweep_id=$(echo "$sweep_output" | grep -oP '(?<=ID: )\w+')
+    echo "Extracted sweep ID: $sweep_id"
+fi
 
-
-for i in $(seq 1 30); do
+for i in $(seq 1 5); do
     sbatch slurm/policy_eval.slurm $sweep_id &
 done
 
