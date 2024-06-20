@@ -10,8 +10,8 @@ name = 'MultiBandit'
 steps = 4000
 seeds = [0,1,2,3,4,5,6,7,8,9,10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]
 models = [500,1000,1500,2000,2500,3000,3500,4000,4500,5000]
-samplers = ["MonteCarlo", "ROS_1e5"]
-graph_name = 'ros_100kv2' 
+samplers = ["MonteCarlo", "ROS_1e4"]
+graph_name = 'ros_10kv2' 
 
 
 # aggregate error data into the dataframe
@@ -67,4 +67,4 @@ def create_histogram():
         #scale x axis between +-0.001
         plt.savefig(f'plots/{name}/histogram.png')
         
-create_histogram()
+compare_mcNross()

@@ -2,7 +2,7 @@
 rm slurm/*.txt
 
 
-sweep_id="2jucpq01"
+sweep_id=""
 
 if [[ -z "$sweep_id" ]]; then
     # Run wandb sweep command and capture output
@@ -14,7 +14,7 @@ if [[ -z "$sweep_id" ]]; then
     echo "Extracted sweep ID: $sweep_id"
 fi
 
-for i in $(seq 1 5); do
+for i in $(seq 1 10); do
     sbatch slurm/policy_eval.slurm $sweep_id &
 done
 

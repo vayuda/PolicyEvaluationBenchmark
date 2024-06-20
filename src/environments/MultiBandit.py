@@ -1,25 +1,7 @@
-import gym
-import numpy as np
-import torch
 from gym.spaces import Discrete, Box
-import copy
-from models import Policy, RosReinforceActor, MultiBanditNetwork
-
-
-def get_exp_config(name):
-    cfg = Configs[name]
-    
-    if name.startswith('MultiBandit'):
-        cfg['env'] = MultiBandit()
-        randomness = name.split('MultiBandit')[-1]
-        name = 'MultiBandit'
-        if randomness:
-            mean_factor, scale_factor = randomness.split('M')[-1].split('S')
-            cfg['env'] = MultiBandit(int(mean_factor), int(scale_factor))
-            
-    return cfg
-
-
+import torch
+import gymnasium as gym
+import numpy as np
 
 class MultiBandit(gym.Env):
     action_space = Discrete(30)
@@ -67,7 +49,7 @@ class MultiBandit(gym.Env):
     def seed(self, seed=None):
         np.random.seed(seed)
 
-    def policy_value(self, pi: Policy):
+    def policy_value(self, pi):
         actions, action_probabilities = pi.action_dist(self.state)
         return np.sum([
             p * self.means[i] for i, p in enumerate(action_probabilities)
@@ -75,27 +57,3 @@ class MultiBandit(gym.Env):
 
     def optimal_policy(self, state):
         return np.argmax(self.means)
-    
-
-Configs = {
-    'CartPole': {
-        'env': gym.make('CartPole-v1'),
-        'max_time_step': 500,
-        'gamma': 0.99,
-        'lr': 1e-3,
-        'save_episodes': [5000, 10000, 15000, 20000, 25000, 30000],
-        'action_discrete': True,
-        'state_discrete': False,
-        'model': RosReinforceActor
-    },
-    'MultiBandit':{
-        'env': None,  # env
-        'max_time_step': MultiBandit.MaxStep,  # max_time_step
-        'gamma': MultiBandit.gamma,  # gamma
-        'lr': 1e-2,  # lr
-        'save_episodes': [500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000],  # save_episodes
-        'action_discrete': True,
-        'state_discrete': True,
-        'model': MultiBanditNetwork
-    }
-}

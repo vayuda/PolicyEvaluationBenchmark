@@ -5,7 +5,7 @@ from tqdm import tqdm
 def compress_ground_truth():
     # print("current directory: ", os.getcwd())
     truth_map = {}
-    directory = "results/MultiBandit/GroundTruth"
+    directory = "results/GridWorld/GroundTruth"
     error_combos = []
     for file in os.listdir(directory):
         model = file[:file.find("_")]
@@ -21,7 +21,7 @@ def compress_ground_truth():
             truth_map[model + "_" + seed] = (truth_steps, truth_values)
         os.remove(directory + "/" + file)
     print(error_combos)
-    with open("results/MultiBandit/GroundTruth/truth_map.pkl", "wb") as pickle_file:
+    with open("results/GridWorld/GroundTruth/truth_map.pkl", "wb") as pickle_file:
         pickle.dump(truth_map, pickle_file)
     print('done')    
 def compress_results():
@@ -81,10 +81,8 @@ def make_histogram():
     with open(f"results/{name}/comparison.pkl", "wb") as pickle_file:
         pickle.dump({'ros4':ros4errs, 'ros5':ros5errs}, pickle_file)
             
-# compress_ground_truth()
-# with open("results/MultiBandit/GroundTruth/truth_map.pkl", "rb") as pickle_file:
-#     truth_map =pickle.load(pickle_file)
-#     print(truth_map["3500_0"])
+compress_ground_truth()
 
-make_histogram()
+
+# make_histogram()
 # compress_results()

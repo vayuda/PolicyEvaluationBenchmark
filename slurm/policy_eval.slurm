@@ -8,5 +8,5 @@
 #SBATCH --mem=10G
 #SBATCH --time=4-00:00:00
 #SBATCH --output slurm/$1-%A.txt            
-#SBATCH --ntasks 4                   # how many repetition time for srun
+#SBATCH --ntasks 7                   # how many repetition time for srun
 srun wandb agent mengomango/policy_eval/$1

@@ -5,7 +5,7 @@ from torch.nn.functional import softplus
 from torch.distributions.categorical import Categorical
 from torch.optim import Adam
 import gymnasium as gym
-from gym.spaces import Discrete
+from gym.spaces import Discrete, Box
 
 
 class PPOAgentCRL(nn.Module):
@@ -48,10 +48,24 @@ class MultiBanditNetwork(nn.Module):
         self.discrete_state = state_discrete
         self.discrete_action = action_discrete
         self.env = env 
+        if isinstance(self.env.observation_space, Discrete):
+            input_size = self.env.observation_space.n
+        elif isinstance(self.env.observation_space, Box):
+            input_size = self.env.observation_space.shape[0]
+        else:
+            raise ValueError('Unsupported observation space')
+        
+        if isinstance(self.env.action_space, Discrete):
+            output_size = self.env.action_space.n
+        elif isinstance(self.env.action_space, Box):
+            output_size = self.env.action_space.shape[0]
+        else:
+            raise ValueError('Unsupported action space')
+        
         self.network = nn.Sequential(
-            nn.Linear(self.env.observation_space.n, hidden_size),
+            nn.Linear(input_size, hidden_size),
             nn.ReLU(),
-            nn.Linear(hidden_size, self.env.action_space.n),
+            nn.Linear(hidden_size, output_size),
             nn.Softmax(-1)
         )
         
@@ -207,19 +221,21 @@ class REINFORCE(Policy):
         self.action_discrete = env_config['action_discrete']
         self.gamma = env_config['gamma']
         self.device = torch.device(kwargs['device'])
-        self.model = env_config['model'](self.env, self.state_discrete, self.action_discrete, self.device)
-        self.lr = kwargs.get('lr', 1e-2)
+        self.model = env_config['model'](self.env, 
+                                         self.state_discrete,
+                                         self.action_discrete,
+                                         self.device, 
+                                         env_config.get('hidden_size', 32))
+        self.lr = env_config['lr']
         if file:
             self.load(file)
         self.optimizer = Adam(self.model.parameters(), lr=self.lr, eps=1e-3, weight_decay=1e-5)
 
     def save(self, file):
-        print('saving', file)
         self.env.close()
         torch.save(self.model, file)
 
     def load(self, file):
-        print('loading', file)
         self.model = torch.load(file).to(self.device)
 
     def update(self, trajectories):
@@ -248,9 +264,9 @@ class REINFORCE(Policy):
         pg_loss.backward()
         self.optimizer.step()
 
-        if np.random.random() < .05:
-            pie_info = f'max_p: {action_dists.probs.max(-1)[0].mean()}' if isinstance(action_dists, torch.distributions.Categorical) else f'sigma: {action_dists.scale.mean()}'
-            print(f'\ta_mean: {advantages.mean().item():.2f}, a_abs_mean: {advantages.abs().mean().item():.2f}, pg_loss: {pg_loss.item():.2f}, {pie_info}')
+        # if np.random.random() < .05:
+        #     pie_info = f'max_p: {action_dists.probs.max(-1)[0].mean()}' if isinstance(action_dists, torch.distributions.Categorical) else f'sigma: {action_dists.scale.mean()}'
+        #     print(f'\ta_mean: {advantages.mean().item():.2f}, a_abs_mean: {advantages.abs().mean().item():.2f}, pg_loss: {pg_loss.item():.2f}, {pie_info}')
 
     def logit_dist(self, state):
         assert isinstance(self.env.action_space, Discrete)

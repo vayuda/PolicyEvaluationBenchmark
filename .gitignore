@@ -2,3 +2,4 @@ wandb/*
 slurm/*.txt
 policies/*
 results/*
+*.pyc
