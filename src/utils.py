@@ -2,6 +2,46 @@ import pickle
 import os
 import numpy as np
 from tqdm import tqdm
+import torch
+from torch.optim.optimizer import Optimizer
+
+#ROS optimizer from original paper
+class AvgAccumGradOptimizer(Optimizer):
+
+    def __init__(self, params, lr):
+        self.lr = lr
+        # self.step_i = 0
+
+        super().__init__(params, {'lr': lr, 'avg_grad': 0})
+
+    @torch.no_grad()
+    def step(self, old_weight: float, new_weight: float, update_avg_grad=True):
+        grad_sum = 0
+        grad_num = 0
+        for group in self.param_groups:
+            for p in group['params']:
+                if p.grad is None:
+                    continue
+                d_p = p.grad
+                state = self.state[p]
+                avg_grad = state.setdefault('avg_grad', 0)
+                # avg_grad = self.step_i / (self.step_i + 1) * avg_grad + d_p / (self.step_i + 1)
+                avg_grad = (old_weight * avg_grad + new_weight * d_p) / (old_weight + new_weight)
+                if update_avg_grad:
+                    state['avg_grad'] = avg_grad
+                if group['lr'] > 0:
+                    p.add_(avg_grad, alpha=-group['lr'])
+
+                grad_sum += avg_grad.abs().sum().item()
+                # grad_sum += avg_grad.pow(2).sum().item()
+                grad_num += avg_grad.numel()
+        # if update:
+        #     self.step_i += 1
+
+        return grad_sum / grad_num
+        # return (grad_sum / grad_num) ** 0.5
+        
+        
 def compress_ground_truth():
     # print("current directory: ", os.getcwd())
     truth_map = {}
@@ -24,6 +64,8 @@ def compress_ground_truth():
     with open("results/GridWorld/GroundTruth/truth_map.pkl", "wb") as pickle_file:
         pickle.dump(truth_map, pickle_file)
     print('done')    
+    
+    
 def compress_results():
     name = 'MultiBandit'
     steps = 4000
@@ -50,6 +92,7 @@ def compress_results():
                 
         with open(f"results/{name}/{sampler}/results.pkl", "wb") as pickle_file:
             pickle.dump(results, pickle_file)
+            
             
 def make_histogram():
     '''Compares the performance of the different samplers on policy-env pairs and plots their distribution'''
@@ -81,8 +124,7 @@ def make_histogram():
     with open(f"results/{name}/comparison.pkl", "wb") as pickle_file:
         pickle.dump({'ros4':ros4errs, 'ros5':ros5errs}, pickle_file)
             
-compress_ground_truth()
-
-
-# make_histogram()
-# compress_results()
+if __name__ == '__main__':
+    compress_ground_truth()
+    # compress_results()
+    # make_histogram()

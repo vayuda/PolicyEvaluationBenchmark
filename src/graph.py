@@ -15,7 +15,7 @@ graph_name = 'ros_10kv2'
 
 
 # aggregate error data into the dataframe
-def compare_mcNross():
+def graph_mse():
     for sampler in samplers:
         first = True
         results = []
@@ -67,4 +67,4 @@ def create_histogram():
         #scale x axis between +-0.001
         plt.savefig(f'plots/{name}/histogram.png')
         
-compare_mcNross()
+graph_mse()

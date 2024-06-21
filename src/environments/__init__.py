@@ -1,8 +1,10 @@
-from models import RosReinforceActor, MultiBanditNetwork
+import torch
 import gymnasium as gym
+
 from environments.MultiBandit import MultiBandit   
 from environments.GridWorld import GridWorld
-import torch
+from policies import RosReinforceActor, MultiBanditNetwork
+
 
 
 def get_exp_config(name):

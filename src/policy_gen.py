@@ -5,10 +5,12 @@ import torch
 import yaml
 import wandb
 import os
+from collections import namedtuple
 
-from models import REINFORCE
+from policies import REINFORCE
 from environments import get_exp_config
 
+USE_WANDB = True
 
 def play_episode(env: gym.Env, max_time_step: int, actor: REINFORCE):
     t = 0
@@ -31,7 +33,7 @@ def play_episode(env: gym.Env, max_time_step: int, actor: REINFORCE):
         returns += r
 
         # learning trick for MountainCar
-        if wandb.config.env_id == 'MountainCar' or wandb.config.env_id == 'MountainCarContinuous':
+        if cfg.env_id == 'MountainCar' or cfg.env_id == 'MountainCarContinuous':
             d = d or (t == 200)  # max_time_step
             r = (max([t[1][0] for t in trajectory]) + 0.5) * 100 if d else r  # higher reward if closer to goal
 
@@ -43,11 +45,11 @@ def play_episode(env: gym.Env, max_time_step: int, actor: REINFORCE):
 
 
 def train():
-    torch.manual_seed(wandb.config.seed)
-    np.random.seed(wandb.config.seed)
-    config = get_exp_config(wandb.config.env_id)
-    print(wandb.config.policy)
-    print(f'training: {wandb.config.env_id}, config: {config}')
+    torch.manual_seed(cfg.seed)
+    np.random.seed(cfg.seed)
+    config = get_exp_config(cfg.env_id)
+    print(cfg.policy)
+    print(f'training: {cfg.env_id}, config: {config}')
     
     
     env = config['env']
@@ -61,7 +63,7 @@ def train():
     batch_size = 10
     for episode in range(training_episodes):
         if not episode % (training_episodes // 200):
-            actor.save(f'policies/{wandb.config.env_id}/{wandb.config.policy}/model_{episode}_{wandb.config.seed}.pt')
+            actor.save(f'policies/{cfg.env_id}/{cfg.policy}/model_{episode}_{cfg.seed}.pt')
 
         tr, returns = play_episode(env, max_time_step, actor)
         batch.append(tr)
@@ -78,10 +80,15 @@ def train():
                 f'training_dis_returns={sum([t[3] * gamma ** i for i, t in enumerate(tr)]):.2f}\t'
                 f'eval_tot_returns={np.mean(eval_returns):.2f}({np.min(eval_returns):.2f}, {np.max(eval_returns):.2f})\t'
                 f'eval_dis_returns={np.mean([sum([t[3] * gamma ** i for i, t in enumerate(tr)]) for tr in eval_trs]):.2f}\t'
-            )   
-
+            )  
+             
+RunConfig = namedtuple('RunConfig', ['env_id', 'policy', 'seed'])
 if __name__ == '__main__': 
-    with open('config/policy_gen.yaml') as f:
-        config = yaml.load(f, Loader=yaml.FullLoader)
-        wandb.init(config=config)
+    cfg = RunConfig('MultiBandit',  'REINFORCE', 0)
+    if USE_WANDB:
+        with open('config/policy_gen.yaml') as f:
+            config = yaml.load(f, Loader=yaml.FullLoader)
+            wandb.init(config=config)
+        cfg = RunConfig(wandb.config.env_id, wandb.config.policy, wandb.config.seed)
+        
     train()

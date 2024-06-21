@@ -8,16 +8,16 @@ import yaml
 import wandb
 from collections import namedtuple
 
-from models import Policy, REINFORCE
+from policies import REINFORCE
 from environments import get_exp_config
-from sampling import MonteCarlo, ROS, DataCollector
+from evaluators import MonteCarlo, ROS, PolicyEvaluator
 
 N_ITER = 30
 USE_WANDB = True
 def policy_evaluation(
         env: gym.Env,
         max_time_step: int,
-        collector: DataCollector, # wrapper for evaluation method and policy
+        evaluator: PolicyEvaluator,
         gamma: float = 1.,
         n_trajectory: int = 1e3,
         show: bool = True,
@@ -39,14 +39,14 @@ def policy_evaluation(
         elif type(s) == tuple:
             s = torch.tensor(s[0], dtype=torch.float32).unsqueeze(0)
             
-        a = collector.act(s)
+        a = evaluator.act(s)
         s_, r, truncated, terminated, _ = env.step(a)
         d = truncated or terminated or time_step == max_time_step - 1
         g += r * (gamma ** time_step)
         step += 1
         
         if d:
-            collector.update(s, a, False)
+            evaluator.update(s, a)
             returns.append(g)
             estimation = n / (n + 1) * estimation + g / (n + 1)
             estimations.append(estimation)
@@ -65,20 +65,25 @@ def policy_evaluation(
             time_step = 0
             
         else:
-            collector.update(s, a)
+            evaluator.update(s, a)
             s = s_
             time_step += 1
 
-RunConfig = namedtuple('RunConfig', ['env_id', 'policy', 'seed', 'num_episodes', 'sampler'])
+RunConfig = namedtuple('RunConfig', ['env_id', 'policy', 'seed', 'num_episodes', 'sampler', "show"])
 if __name__ == '__main__':
     if USE_WANDB: # uses wandb and slurm to run experiments with different configs in parallel            
         with open('config/policy_eval.yaml') as f:
                 config = yaml.load(f, Loader=yaml.FullLoader)
                 wandb.init(config=config)
-        cfg = RunConfig(wandb.config.env_id, wandb.config.policy, wandb.config.seed, wandb.config.num_episodes, wandb.config.sampler)
+                
+        cfg = RunConfig(
+            wandb.config.env_id, wandb.config.policy, 
+            wandb.config.seed, wandb.config.num_episodes, 
+            wandb.config.sampler, False
+        )
         
     else:  # for local debugging
-        cfg = RunConfig('GridWorld',  0, 0, 1000, 'GroundTruth')
+        cfg = RunConfig('GridWorld',  0, 0, 1000, 'GroundTruth', True)
     
 
     np.random.seed(cfg.seed)
@@ -88,9 +93,12 @@ if __name__ == '__main__':
     pi_e = REINFORCE(env_config, 
                     file=f'policies/{cfg.env_id}/REINFORCE/model_{cfg.policy}_{cfg.seed}.pt',
                     device='cpu')
+    
     os.makedirs(f"results/{cfg.env_id}/{cfg.sampler}", exist_ok=True)
+    
     if cfg.sampler == 'MonteCarlo':
         collector = MonteCarlo(pi_e)
+        batch_size = 1
         ground_truth = False
         
     elif cfg.sampler.startswith('ROS'):
@@ -102,9 +110,12 @@ if __name__ == '__main__':
                         'ros_first_layer': False,
                         'ros_only_weight': False})
         ground_truth = False
-        
+        batch_size = 1
+    elif cfg.sampler == 'BehaviorPolicySearch':
+        pass
     elif cfg.sampler == 'GroundTruth':
         collector = MonteCarlo(pi_e)
+        batch_size = 1
         ground_truth = True
         
     else:
@@ -117,7 +128,7 @@ if __name__ == '__main__':
             env_config['max_time_step'],
             collector, env_config['gamma'], 
             n_trajectory=cfg.num_episodes,
-            show=True)
+            show=cfg.show)
 
         # print(f'\n{cfg.env_id} {i}: avg_step: {avg_steps}, policy value and variance: {policy_value}, {policy_variance}')
         ground_truth_file = f"results/{cfg.env_id}/GroundTruth/{cfg.policy}_{cfg.seed}.pkl"
