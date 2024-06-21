@@ -10,7 +10,7 @@ from collections import namedtuple
 from policies import REINFORCE
 from environments import get_exp_config
 
-USE_WANDB = True
+USE_WANDB = False
 
 def play_episode(env: gym.Env, max_time_step: int, actor: REINFORCE):
     t = 0
@@ -83,12 +83,13 @@ def train():
             )  
              
 RunConfig = namedtuple('RunConfig', ['env_id', 'policy', 'seed'])
-if __name__ == '__main__': 
-    cfg = RunConfig('MultiBandit',  'REINFORCE', 0)
-    if USE_WANDB:
-        with open('config/policy_gen.yaml') as f:
-            config = yaml.load(f, Loader=yaml.FullLoader)
-            wandb.init(config=config)
-        cfg = RunConfig(wandb.config.env_id, wandb.config.policy, wandb.config.seed)
+if __name__ == '__main__':
+    for i in range(30): 
+        cfg = RunConfig('GridWorld',  'REINFORCE', i)
+        if USE_WANDB:
+            with open('config/policy_gen.yaml') as f:
+                config = yaml.load(f, Loader=yaml.FullLoader)
+                wandb.init(config=config)
+            cfg = RunConfig(wandb.config.env_id, wandb.config.policy, wandb.config.seed)
         
-    train()
+        train()

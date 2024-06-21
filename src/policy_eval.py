@@ -13,7 +13,9 @@ from environments import get_exp_config
 from evaluators import MonteCarlo, ROS, PolicyEvaluator
 
 N_ITER = 30
-USE_WANDB = True
+USE_WANDB = False
+
+
 def policy_evaluation(
         env: gym.Env,
         max_time_step: int,

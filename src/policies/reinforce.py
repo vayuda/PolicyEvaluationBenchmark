@@ -6,7 +6,7 @@ from torch.distributions.categorical import Categorical
 from torch.optim import Adam
 import numpy as np
 
-from base import Policy
+from policies.base import Policy
 
 class REINFORCE(Policy):
 
