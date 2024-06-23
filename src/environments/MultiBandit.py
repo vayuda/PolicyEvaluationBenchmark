@@ -1,6 +1,6 @@
-from gym.spaces import Discrete, Box
 import torch
 import gymnasium as gym
+from gymnasium.spaces import Discrete, Box
 import numpy as np
 
 class MultiBandit(gym.Env):
@@ -8,9 +8,7 @@ class MultiBandit(gym.Env):
     observation_space = Discrete(1)
     MaxStep = 1
     gamma = 1
-
-    # observation_space = Box(0, 0, (1,))
-
+    
     def __init__(self, mean_factor=1.0, scale_factor=1.0) -> None:
         super().__init__()
         self.ready = False
@@ -26,9 +24,6 @@ class MultiBandit(gym.Env):
         print(f'maximum expected returns: {self.means.max()}')
         print("=====================================")
         
-        # maximum expected returns: 0.978618342232764
-        
-
     def step(self, action: int):
         assert self.ready, "please reset."
         assert action in range(30)
@@ -50,7 +45,7 @@ class MultiBandit(gym.Env):
         np.random.seed(seed)
 
     def policy_value(self, pi):
-        actions, action_probabilities = pi.action_dist(self.state)
+        action_probabilities = pi.action_prob(self.state)
         return np.sum([
             p * self.means[i] for i, p in enumerate(action_probabilities)
         ])

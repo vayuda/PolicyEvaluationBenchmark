@@ -1,7 +1,7 @@
 import torch
 import gymnasium as gym
 from torch import nn
-from gym.spaces import Discrete, Box
+from gymnasium.spaces import Discrete, Box
 from torch.nn.functional import softplus
 import numpy as np
 

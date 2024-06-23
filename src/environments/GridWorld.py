@@ -2,9 +2,9 @@ import torch
 import numpy as np
 import os
 import gymnasium as gym
-from gym.spaces.box import Box
-from gym.spaces.discrete import Discrete
-from gym.wrappers.time_limit import TimeLimit
+from gymnasium.spaces.box import Box
+from gymnasium.spaces.discrete import Discrete
+from gymnasium.wrappers.time_limit import TimeLimit
 
 
 class Config(object):

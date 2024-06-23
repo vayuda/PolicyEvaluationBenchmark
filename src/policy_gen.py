@@ -1,5 +1,5 @@
 import gymnasium as gym
-from gym.spaces import Box
+from gymnasium.spaces import Box
 import numpy as np
 import torch
 import yaml
@@ -82,14 +82,15 @@ def train():
                 f'eval_dis_returns={np.mean([sum([t[3] * gamma ** i for i, t in enumerate(tr)]) for tr in eval_trs]):.2f}\t'
             )  
              
-RunConfig = namedtuple('RunConfig', ['env_id', 'policy', 'seed'])
+
 if __name__ == '__main__':
-    for i in range(30): 
-        cfg = RunConfig('GridWorld',  'REINFORCE', i)
-        if USE_WANDB:
-            with open('config/policy_gen.yaml') as f:
-                config = yaml.load(f, Loader=yaml.FullLoader)
-                wandb.init(config=config)
-            cfg = RunConfig(wandb.config.env_id, wandb.config.policy, wandb.config.seed)
-        
-        train()
+    RunConfig = namedtuple('RunConfig', ['env_id', 'policy', 'seed'])
+    cfg = RunConfig('GridWorld',  'REINFORCE', 0)
+    os.makedirs(f'policies/{cfg.env_id}/{cfg.policy}', exist_ok=True)
+    if USE_WANDB:
+        with open('config/policy_gen.yaml') as f:
+            config = yaml.load(f, Loader=yaml.FullLoader)
+            wandb.init(config=config)
+        cfg = RunConfig(wandb.config.env_id, wandb.config.policy, wandb.config.seed)
+    
+    train()
