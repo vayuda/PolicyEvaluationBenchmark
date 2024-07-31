@@ -7,6 +7,6 @@
 #SBATCH --cpus-per-task=4                # one CPU core per task
 #SBATCH --mem=10G
 #SBATCH --time=4-00:00:00
-#SBATCH --output slurm/$1-%A.txt            
-#SBATCH --ntasks 7                   # how many repetition time for srun
+#SBATCH --output slurm/policy_eval-%A.txt            
+#SBATCH --ntasks 8                   # how many repetition time for srun
 srun wandb agent mengomango/policy_eval/$1

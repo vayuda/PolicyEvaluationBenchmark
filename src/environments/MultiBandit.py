@@ -17,12 +17,13 @@ class MultiBandit(gym.Env):
 
         self.means = np.random.rand(30) * mean_factor
         self.scales = np.random.rand(30) * scale_factor
-        print("=====================================")
-        print("Creating MultiBandit Environment")
-        print("means: ", self.means)
-        print("scales: ", self.scales)
-        print(f'maximum expected returns: {self.means.max()}')
-        print("=====================================")
+        # print("=====================================")
+        # print("Creating MultiBandit Environment")
+        # print("means: ", self.means)
+        # print("scales: ", self.scales)
+        # print(f'maximum expected returns: {self.means.max()}')
+        # print("=====================================")
+        np.random.seed(None)
         
     def step(self, action: int):
         assert self.ready, "please reset."

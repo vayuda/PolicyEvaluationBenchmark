@@ -112,3 +112,36 @@ class MultiBanditNetwork(nn.Module):
     def to(self, device):
         self.device = device
         return super().to(device)
+    
+    
+class TabularNN(nn.Module):
+    def __init__(self, env: gym.Env, state_discrete: bool, action_discrete: bool, device: torch.device, hidden_size = 32):
+        super().__init__()
+        self.discrete_state = state_discrete
+        self.discrete_action = action_discrete
+        self.env = env 
+        if isinstance(self.env.observation_space, Discrete):
+            input_size = self.env.observation_space.n
+        elif isinstance(self.env.observation_space, Box):
+            input_size = self.env.observation_space.shape[0]
+        else:
+            raise ValueError('Unsupported observation space')
+        
+        if isinstance(self.env.action_space, Discrete):
+            output_size = self.env.action_space.n
+        elif isinstance(self.env.action_space, Box):
+            output_size = self.env.action_space.shape[0]
+        else:
+            raise ValueError('Unsupported action space')
+        
+        self.network = nn.Sequential(
+            nn.Linear(input_size, output_size),
+            nn.Softmax(-1)
+        )
+        
+    def forward(self, state): 
+        return self.network(state)
+
+    def to(self, device):
+        self.device = device
+        return super().to(device)

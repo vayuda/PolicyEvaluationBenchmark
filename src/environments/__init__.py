@@ -3,7 +3,7 @@ import gymnasium as gym
 
 from environments.MultiBandit import MultiBandit   
 from environments.GridWorld import GridWorld
-from policies import RosReinforceActor, MultiBanditNetwork
+from policies import RosReinforceActor, MultiBanditNetwork, TabularNN
 
 
 
@@ -19,8 +19,9 @@ def get_exp_config(name):
             cfg['env'] = MultiBandit(int(mean_factor), int(scale_factor))
     
     if name.startswith('GridWorld'):
-        cfg['env'] = GridWorld(width=cfg['grid_size'], 
-                               t_max=cfg['max_time_step'],
+        scale = int(name.split('-')[-1])
+        cfg['env'] = GridWorld(width=scale, 
+                               t_max=scale,
                                normalize_reward=cfg['normalize_reward'],
                                offline_data_number=cfg['offline_data_number'])
         name = 'GridWorld'
@@ -43,12 +44,37 @@ Configs = {
         'max_time_step': MultiBandit.MaxStep,  # max_time_step
         'gamma': MultiBandit.gamma,  # gamma
         'lr': 1e-2,  # lr
-        'save_episodes': [500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000],  # save_episodes
+        'save_episodes': [0, 10, 25, 50, 100, 200],  # save_episodes
+        'action_discrete': True,
+        'state_discrete': True,
+        'model': TabularNN
+    },
+    'GridWorld-1': {
+        'env': None,  # env
+        'max_time_step': 1,  # max_time_step
+        'grid_size': 1,
+        'normalize_reward': True,
+        'offline_data_number': 0, # how much offline data to use
+        'gamma': 0.99,  # gamma
+        'lr': 1e-2,  # lr,
         'action_discrete': True,
         'state_discrete': True,
         'model': MultiBanditNetwork
     },
-    'GridWorld': {
+    'GridWorld-5': {
+        'env': None,  # env
+        'max_time_step': 5,  # max_time_step
+        'grid_size': 5,
+        'normalize_reward': True,
+        'offline_data_number': 0, # how much offline data to use
+        'gamma': 0.99,  # gamma
+        'lr': 1e-2,  # lr
+        'save_episodes': [30],  # save_episodes
+        'action_discrete': True,
+        'state_discrete': True,
+        'model': MultiBanditNetwork
+    },
+    'GridWorld-10': {
         'env': None,  # env
         'max_time_step': 10,  # max_time_step
         'grid_size': 10,
@@ -56,7 +82,7 @@ Configs = {
         'offline_data_number': 0, # how much offline data to use
         'gamma': 0.99,  # gamma
         'lr': 1e-2,  # lr
-        'save_episodes': [20000],  # save_episodes
+        'save_episodes': [30],  # save_episodes
         'action_discrete': True,
         'state_discrete': True,
         'model': MultiBanditNetwork

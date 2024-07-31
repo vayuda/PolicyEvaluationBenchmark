@@ -1,10 +1,48 @@
 import torch
-from torch.optim import SGD
+from torch.optim import SGD, Adam
+from torch.optim.optimizer import Optimizer
 import gymnasium as gym
 import copy
 
 from policies import Policy, REINFORCE
-from utils import AvgAccumGradOptimizer
+
+
+#ROS optimizer from original paper
+class AvgAccumGradOptimizer(Optimizer):
+
+    def __init__(self, params, lr):
+        self.lr = lr
+        # self.step_i = 0
+
+        super().__init__(params, {'lr': lr, 'avg_grad': 0})
+
+    @torch.no_grad()
+    def step(self, old_weight: float, new_weight: float, update_avg_grad=True):
+        grad_sum = 0
+        grad_num = 0
+        for group in self.param_groups:
+            for p in group['params']:
+                if p.grad is None:
+                    continue
+                d_p = p.grad
+                state = self.state[p]
+                avg_grad = state.setdefault('avg_grad', 0)
+                # avg_grad = self.step_i / (self.step_i + 1) * avg_grad + d_p / (self.step_i + 1)
+                avg_grad = (old_weight * avg_grad + new_weight * d_p) / (old_weight + new_weight)
+                if update_avg_grad:
+                    state['avg_grad'] = avg_grad
+                if group['lr'] > 0:
+                    p.add_(avg_grad, alpha=-group['lr'])
+
+                grad_sum += avg_grad.abs().sum().item()
+                # grad_sum += avg_grad.pow(2).sum().item()
+                grad_num += avg_grad.numel()
+        # if update:
+        #     self.step_i += 1
+
+        return grad_sum / grad_num
+        # return (grad_sum / grad_num) ** 0.5
+        
 
 
 class PolicyEvaluator:
@@ -56,7 +94,7 @@ class ROS(PolicyEvaluator):
     def update(self, state, action, ep_info=None):
         self.step += 1
         self.pi_b.model.eval()  # fix BN
-        self.recover_parameters() # reset pi_b to pi_e
+        # self.recover_parameters() # reset pi_b to pi_e
         loss = torch.tensor(0.0, requires_grad=True)
         cv = self.pi_b.action_prob(state, action, require_grad=True, lp=True)
         loss = loss + cv
@@ -72,7 +110,7 @@ class BehaviorPolicySearch(PolicyEvaluator):
         self.max_time_step = max_time_step
         self.pi_b = copy.deepcopy(pi_e)
         self.trajectories = []
-        self.optimizer = SGD(self.pi_b.model.parameters(), lr=lr)
+        self.optimizer = Adam(self.pi_b.model.parameters(), lr=lr)
         self.k = k
         
     def act(self, state):
@@ -101,8 +139,8 @@ class BehaviorPolicySearch(PolicyEvaluator):
             ratio = g * (pi_e - pi_b).exp()
             err = err - ratio**2 * lp # torch optimizers minimize the err so make it negative to maximize the objective
 
-        err /= self.k
         self.optimizer.zero_grad()
+        err /= self.k
         err.backward()
         self.optimizer.step()
         self.trajectories = []

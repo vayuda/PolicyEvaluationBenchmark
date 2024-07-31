@@ -1,7 +1,6 @@
 import time
 import numpy as np
 import torch
-from torch.nn.functional import one_hot
 import gymnasium as gym
 import os
 import pickle
@@ -13,7 +12,9 @@ from policies import REINFORCE
 from environments import get_exp_config
 from evaluators import MonteCarlo, ROS, PolicyEvaluator, BehaviorPolicySearch
 
-
+# config
+MODE = "online"
+USE_WANDB = True
 
 
 def policy_evaluation(
@@ -21,7 +22,7 @@ def policy_evaluation(
     max_time_step: int,
     evaluator: PolicyEvaluator,
     gamma: float = 1.,
-    n_trajectory: int = 1e3,
+    n_trajectory: int = 1e4,
     show: bool = True,
 ):
     n = 0
@@ -59,7 +60,7 @@ def policy_evaluation(
             n += 1
 
             if show and n % int(n_trajectory /100) == 0:
-                print(f'tr {n}, time: {int(time.time() - start_time)}s, avg_step: {step / n}, est: {estimation:.3f} var: {np.var(returns):.3f}')
+                print(f'tr {n}, time: {int(time.time() - start_time)}s, est: {estimation:.5f} var: {np.var(returns):.3f}')
 
             if n == n_trajectory:
                 return estimation, np.var(returns), step / n, returns, estimations
@@ -75,108 +76,113 @@ def policy_evaluation(
 
 
 if __name__ == '__main__':
-    # config
-    N_ITER = 30
-    USE_WANDB = True
-    RunConfig = namedtuple('RunConfig', ['env_id', 'policy', 'seed', 'num_episodes', 'sampler', "show"])
+    
+    RunConfig = namedtuple('RunConfig', ['env_id', 'policy', 'seed','repeats', 'num_episodes', 'sampler', "show"])
     
     if USE_WANDB: # uses wandb and slurm to run experiments with different configs in parallel            
         with open('config/policy_eval.yaml') as f:
-                config = yaml.load(f, Loader=yaml.FullLoader)
-                wandb.init(config=config)
+            config = yaml.load(f, Loader=yaml.FullLoader)
+            wandb.init(config=config, mode=MODE)
                 
-        cfg = RunConfig(
+        cfgs = [RunConfig(
             wandb.config.env_id, wandb.config.policy, 
-            wandb.config.seed, wandb.config.num_episodes, 
+            wandb.config.seed, wandb.config.repeats,
+            wandb.config.num_episodes, 
             wandb.config.sampler, False
-        )
+        )]
         
     else:  # for local debugging
-        cfg = RunConfig('GridWorld',  5000, 0, 10000, 'BPS_100_1e-3', True)
-    
-    # env initialization
-    np.random.seed(cfg.seed)
-    torch.random.manual_seed(cfg.seed)
-    env_config = get_exp_config(cfg.env_id)
-    ground_truth = False
-    
-    # save info
-    results_folder = f"results/{cfg.env_id}/{cfg.sampler}"
-    results_file = f"{cfg.policy}_{cfg.seed}.pkl"
-    os.makedirs(results_folder, exist_ok=True)
-    
-    
-    
-    pi_e = REINFORCE(
-        env_config, 
-        file=f'policies/{cfg.env_id}/REINFORCE/model_{cfg.policy}_{cfg.seed}.pt',
-        device='cpu'
-    )
-    
-    # policy evaluation selector and setup
-    if cfg.sampler == 'MonteCarlo':
-        collector = MonteCarlo(pi_e)
+        cfgs = [RunConfig('MultiBandit',  1000, 2, 30, 10000, 'BPS_100_1e-2', False),
+                RunConfig('MultiBandit',  1000, 2, 30, 10000, 'ROS_1e4', False),
+                RunConfig('MultiBandit',  1000, 2, 30, 10000, 'MonteCarlo', False)]
+    for cfg in cfgs:
+        # env initialization
+        np.random.seed(cfg.seed)
+        torch.random.manual_seed(cfg.seed)
+        env_config = get_exp_config(cfg.env_id)
+        ground_truth = False
         
-    elif cfg.sampler.startswith('ROS'):
-        collector = ROS(
-            pi_e, 
-            env_config['env'],
-            env_config['max_time_step'],
-            lr=float(cfg.sampler.split('_')[1])
+        # save info
+        results_folder = f"results/{cfg.env_id}/{cfg.sampler}"
+        results_file = f"{cfg.policy}_{cfg.seed}.pkl"
+        if os.path.exists(os.path.join(results_folder, results_file)):
+            err_data = pickle.load(open(os.path.join(results_folder, results_file), 'rb'))
+            if USE_WANDB:
+                wandb.log({"error": err_data[-1].mean()})
+        os.makedirs(results_folder, exist_ok=True)
+        
+        
+        
+        pi_e = REINFORCE(
+            env_config, 
+            file=f'policies/{cfg.env_id}/REINFORCE/model_{cfg.policy}_{cfg.seed}.pt',
+            device='cpu'
         )
         
-    elif cfg.sampler.startswith('BPS'):
-        collector = BehaviorPolicySearch(
-            pi_e, 
-            env_config['env'],
-            env_config['max_time_step'],
-            k=int(cfg.sampler.split('_')[1]),
-            lr=float(cfg.sampler.split('_')[2])
-        )
-        
-    elif cfg.sampler == 'GroundTruth':
-        collector = MonteCarlo(pi_e)
-        ground_truth = True
-        
-    else:
-        raise ValueError(f'Unknown collector: {cfg.collector}')
-
-    # policy evaluation main loop
-    err_data = []
-    for i in range(N_ITER):
-        print(f"Running iteration {i+1}/{N_ITER}")
-        policy_value, policy_variance, avg_steps, returns, estimations = policy_evaluation(
-            env_config['env'], 
-            env_config['max_time_step'],
-            collector, env_config['gamma'], 
-            n_trajectory=cfg.num_episodes,
-            show=cfg.show
-        )
-        # write back results
-        
-        if ground_truth:  
-            with open(os.path.join(results_folder, results_file),'wb') as f:
-                pickle.dump({'truth_steps': avg_steps,
-                        'truth_value': policy_value,
-                        }, f)
-            break # only need to calculate ground truth once and then we're done
+        # policy evaluation selector and setup
+        if cfg.sampler == 'MonteCarlo':
+            collector = MonteCarlo(pi_e)
+            
+        elif cfg.sampler.startswith('ROS'):
+            collector = ROS(
+                pi_e, 
+                env_config['env'],
+                env_config['max_time_step'],
+                lr=float(cfg.sampler.split('_')[1])
+            )
+            
+        elif cfg.sampler.startswith('BPS'):
+            collector = BehaviorPolicySearch(
+                pi_e, 
+                env_config['env'],
+                env_config['max_time_step'],
+                k=int(cfg.sampler.split('_')[1]),
+                lr=float(cfg.sampler.split('_')[2])
+            )
+            
+        elif cfg.sampler == 'GroundTruth':
+            collector = MonteCarlo(pi_e)
+            ground_truth = True
             
         else:
-            # save mse
-            ground_truth_file = f"results/{cfg.env_id}/GroundTruth/truth_map.pkl"
-            with open(ground_truth_file,'rb') as f:
-                info = pickle.load(f)
-                truth_steps, truth_value = info[f"{cfg.policy}_{cfg.seed}"]
+            raise ValueError(f'Unknown collector: {cfg.collector}')
+
+        # policy evaluation main loop
+        err_data = []
+        for i in range(cfg.repeats):
+            policy_value, policy_variance, avg_steps, returns, estimations = policy_evaluation(
+                env_config['env'], 
+                env_config['max_time_step'],
+                collector, env_config['gamma'], 
+                n_trajectory=cfg.num_episodes,
+                show=cfg.show
+            )
+            # write back results
+            
+            if ground_truth:  
+                with open(os.path.join(results_folder, results_file),'wb') as f:
+                    pickle.dump({'truth_steps': avg_steps,
+                            'truth_value': policy_value,
+                            }, f)
+                break # only need to calculate ground truth once and then we're done
                 
-            estimations = np.array(estimations)
-            error =  np.power(estimations - truth_value,2)
-            err_data.append(error)
-            
-    if not ground_truth: 
-        err_data = np.array(err_data)
-        if USE_WANDB:
-            wandb.log({"error": err_data[-1].mean()}) # report final mse average over 30 trials to wandb
-        print(f"Final MSE: {err_data[-1].mean()}")
-        with open(os.path.join(results_folder, results_file),'wb') as f:    
-            pickle.dump(err_data, f)
-            
+            else:
+                # save mse
+                ground_truth_file = f"results/{cfg.env_id}/truth_map.pkl"
+                with open(ground_truth_file,'rb') as f:
+                    info = pickle.load(f)
+                    truth_steps, truth_value = info[f"{cfg.policy}_{cfg.seed}"]
+                    
+                estimations = np.array(estimations)
+                error =  np.power(estimations - truth_value,2)
+                err_data.append(error)
+                
+        if not ground_truth: 
+            err_data = np.array(err_data)
+            if USE_WANDB:
+                wandb.log({"error": err_data[-1].mean()}) # report final mse average over 30 trials to wandb
+            else:
+                print(f"{cfg.sampler} Final MSE: {err_data[-1].mean()}")
+            with open(os.path.join(results_folder, results_file),'wb') as f:    
+                pickle.dump(err_data, f)
+                

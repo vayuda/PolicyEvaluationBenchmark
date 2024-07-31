@@ -37,7 +37,7 @@ class REINFORCE(Policy):
     def update(self, trajectories):
         self.model.train()
 
-        states, actions, advantages = [], [], []
+        states, actions, returns = [], [], []
         for trajectory in trajectories:
             g = 0
             for t, s, a, r, d, s_ in reversed(trajectory):
@@ -45,19 +45,19 @@ class REINFORCE(Policy):
                 # trainings.append(([t], s, a, r, s_, d, g))
                 states.append(s)
                 actions.append(a)
-                advantages.append(g)
+                returns.append(g)
         # time_steps, states, actions, rewards, next_states, dones, gs = (torch.Tensor(tensors).to(self.device) for tensors in zip(*trainings))
         # advantages = gs
         states = torch.cat(states)
         actions = torch.tensor(actions)
-        advantages = torch.tensor(advantages)
-        advantages = advantages / advantages.abs().max()  # reduce variance, but need batch.
+        returns = torch.tensor(returns)
+        returns = returns / returns.abs().max()  # reduce variance, but need batch.
         action_dists = self.action_dist(states, require_grad=True)
         log_action_probs = action_dists.log_prob(actions)
-        pg_loss = (-advantages * log_action_probs.squeeze(-1)).mean()
+        loss = (-returns * log_action_probs.squeeze(-1)).mean()
 
         self.optimizer.zero_grad()
-        pg_loss.backward()
+        loss.backward()
         self.optimizer.step()
 
     def logit_dist(self, state):
@@ -67,29 +67,28 @@ class REINFORCE(Policy):
         with torch.no_grad():
             return self.model(state, logit=True)[0].numpy()
 
-    def action_dist(self, state, fix_bn=True):
-        if fix_bn:
-            self.model.eval()
-        outputs = self.model(state)
-        if self.action_discrete:    
-            dist = Categorical(outputs)
-        else:
-            action_mean = outputs[..., 0]
-            action_scale = outputs[..., 1]
-            dist = torch.distributions.Normal(action_mean, action_scale)
-        return dist
+    def action_dist(self, state, require_grad=False):
+        mode = torch.enable_grad if require_grad else torch.no_grad
+        with mode():
+            outputs = self.model(state)
+            if self.action_discrete:    
+                dist = Categorical(outputs)
+            else:
+                action_mean = outputs[..., 0]
+                action_scale = outputs[..., 1]
+                dist = torch.distributions.Normal(action_mean, action_scale)
+            return dist
 
     
     def action_prob(self, state: torch.Tensor, action: torch.Tensor, lp=False, require_grad=False):
         mode = torch.enable_grad if require_grad else torch.no_grad
         with mode():
-            dist = self.action_dist(state)
-            # action = action if isinstance(action, torch.Tensor) else torch.Tensor(action)
+            dist = self.action_dist(state, require_grad)
             action_prob = dist.log_prob(action)
             if not lp:
                 action_prob = action_prob.exp()
-            return action_prob if require_grad or len(action_prob) > 1 else action_prob.item()
-            
+            return action_prob
+        
     def sample(self, state, require_grad=False):
         action_dist = self.action_dist(state, require_grad)
         action = action_dist.sample()

@@ -6,21 +6,48 @@ import yaml
 import pickle
 import os
 
-name = 'MultiBandit'
-steps = 4000
-seeds = [0,1,2,3,4,5,6,7,8,9,10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]
-models = [500,1000,1500,2000,2500,3000,3500,4000,4500,5000]
-samplers = ["MonteCarlo", "ROS_1e4"]
-graph_name = 'ros_10kv2' 
+def bounds_to_list(min, max):
+    return list(range(min, max + 1))
+
+
+with open("config/policy_eval.yaml", 'r') as file:
+    config = yaml.safe_load(file)
+    
+result_dir = "results/MultiBandit"
+parameters = config.get('parameters', {})
+steps = parameters["num_episodes"]["value"]
+seeds = bounds_to_list(parameters["seed"]["min"], parameters["seed"]["max"])
+models = parameters["policy"]["values"]
+samplers = parameters["sampler"]["values"]
+plot_dir = f"{result_dir}/plots"
+os.makedirs(plot_dir, exist_ok=True)
+
+'''
+["BPS_100_1e-2",
+"BPS_100_1e-1", 
+"BPS_100_1",
+"BPS_100_1e2",
+"BPS_100_1e3", 
+"BPS_100_1e4", 
+"BPS_100_1e5", 
+"BPS_100_1e6",
+"ROS_1e-2",
+"ROS_1",
+"ROS_1e3",
+"ROS_1e4",
+"ROS_1e5"]
+'''
 
 
 # aggregate error data into the dataframe
 def graph_mse():
+    name = 'mse-1k'
+    samplers = ["BPS_1000_1e-4", "MonteCarlo"]
     for sampler in samplers:
         first = True
         results = []
         print(f'Loading data for {sampler}')
-        with open(f"results/{name}/{sampler}/results.pkl", "rb") as pickle_file:
+        with open(f"{result_dir}/{sampler}_results.pkl", "rb") as pickle_file:
             results = pickle.load(pickle_file)
                     
         print(f'creating graph for {sampler}')
@@ -34,8 +61,7 @@ def graph_mse():
         plt.fill_between(range(steps), lower, upper, alpha=0.2)
     
 
-
-    os.makedirs(f"plots/{name}", exist_ok=True)
+    
     # mc1 =mc_mse[0]
 
     # norm_mc_mse = mc_mse/ mc1
@@ -48,23 +74,33 @@ def graph_mse():
     plt.legend()
     # plt.xscale('log')
     plt.yscale('log')
-    plt.savefig(f'plots/{name}/{graph_name}.png')
+    plt.savefig(f'{plot_dir}/{name}.png')
 
 
 def create_histogram():
-    datafile = 'results/MultiBandit/comparison.pkl'
-    with open(datafile, 'rb') as f:
+    with open(f'{result_dir}/final_means.pkl', 'rb') as f:
         data = pickle.load(f)
-        ros4errs = data['ros4']
-        ros5errs = data['ros5']
-        print(sum(ros4errs))
-        print(sum(ros5errs))
-        plt.hist(ros4errs, bins=500, alpha=0.5, label='ROS_1e4')
-        plt.hist(ros5errs, bins=500, alpha=0.5, label='ROS_1e5')
-        plt.legend()
-        plt.xlabel('MC - Ros MSE difference')
-        plt.ylabel('Frequency')
-        #scale x axis between +-0.001
-        plt.savefig(f'plots/{name}/histogram.png')
+        for sampler in samplers:
+            if sampler == "MonteCarlo":
+                continue
+            print("sampler", sampler)
+            sampler_result = data[sampler]
+            plt.hist(sampler_result, bins=20, alpha=0.5, label=sampler)
+            plt.legend()
+            plt.xlabel('MC - sampler MSE difference')
+            # plt.xlim(-0.01,0.01)
+            plt.ylabel('Frequency')
+            plt.savefig(f'{plot_dir}/{sampler}_hist.png')
+            plt.clf()
+            sampler_result.sort()
+            print(f"worst 10: {[int(i*1000)/1000. for i in sampler_result[:10]]}")
+            sampler_result.sort(reverse=True)
+            print(f"best 10: {[int(i*1000)/1000. for i in sampler_result[:10]]}")
+            print(f'mse < MC %: {100*len([i for i in sampler_result if i > 0]) / len(sampler_result):.3f}')
         
-graph_mse()
+if __name__ == '__main__':
+    import sys
+    if sys.argv[1] == 'mse':
+        graph_mse()
+    elif sys.argv[1] == 'hist':
+        create_histogram()

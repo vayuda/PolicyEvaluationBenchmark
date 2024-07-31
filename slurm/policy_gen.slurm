@@ -1,7 +1,4 @@
 #!/bin/bash
-
-# Example of running python script with a job array
-
 #SBATCH --partition=cpu
 #SBATCH --gpus-per-node=0
 #SBATCH --cpus-per-task=3                # one CPU core per task

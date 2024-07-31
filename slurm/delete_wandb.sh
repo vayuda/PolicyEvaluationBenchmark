@@ -8,7 +8,7 @@ if [ ! -d "$target_dir" ]; then
   echo "Error: Directory '$target_dir' does not exist."
   exit 1
 fi
-targets =  "wandb/run-20240606.*"
+targets =  "wandb/run-202407.*"
 # Loop through all entries in the directory
 for entry in "$target_dir"/*; do
   # Check if it's a directory
